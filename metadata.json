@@ -1,0 +1,5 @@
+{
+  "name": "3D Terrain Editor",
+  "description": "An interactive 3D terrain viewer where users can select and highlight parts of a grid overlay. Features Unity-like camera controls for scene navigation.",
+  "requestFramePermissions": []
+}
