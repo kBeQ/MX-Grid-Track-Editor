@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import Scene from './components/Scene';
 import { DEFORMATIONS } from './components/deformations';
-import type { DeformationDef } from './types';
+import type { Deformation, DeformationDef } from './types';
 
 // Instructions component updated for sculpting controls
 const Instructions: React.FC = () => (
@@ -129,6 +129,46 @@ const SettingsPanel: React.FC<{
   );
 };
 
+// Moved from components/BrushIcons.tsx to reduce file bloat
+const BrushPreview: React.FC<{ className?: string; shape: Deformation; }> = ({ className, shape }) => {
+  const { cells, gridTemplateColumns } = useMemo(() => {
+    if (!shape || shape.length === 0 || shape[0].length === 0) {
+      return { cells: [], gridTemplateColumns: '' };
+    }
+    
+    const height = shape.length;
+    const width = shape[0].length;
+    
+    const allValues = shape.flat();
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    const range = max - min;
+
+    const newCells = shape.map((row, rowIndex) =>
+      row.map((value, colIndex) => {
+        const normalized = range === 0 ? 0.5 : (value - min) / range;
+        const colorValue = Math.floor(normalized * 255);
+        const color = `rgb(${colorValue}, ${colorValue}, ${colorValue})`;
+        return <div key={`${rowIndex}-${colIndex}`} style={{ backgroundColor: color }} />;
+      })
+    );
+
+    return {
+      cells: newCells.flat(),
+      gridTemplateColumns: `repeat(${width}, 1fr)`
+    };
+
+  }, [shape]);
+
+  return (
+    <div
+      className={`grid ${className}`}
+      style={{ gridTemplateColumns, aspectRatio: '1 / 1' }}
+    >
+      {cells}
+    </div>
+  );
+};
 
 const DeformationToolbar: React.FC<{
   selectedDeformationId: string | null;
@@ -145,7 +185,7 @@ const DeformationToolbar: React.FC<{
           aria-pressed={selectedDeformationId === def.id}
           title={def.name}
         >
-          <def.icon className="w-10 h-10 text-white" shape={def.shape} />
+          <BrushPreview className="w-10 h-10 text-white" shape={def.shape} />
         </button>
       ))}
     </div>

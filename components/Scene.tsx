@@ -6,20 +6,8 @@ import Terrain from './Terrain';
 import Grid from './Grid';
 import Ghost from './Ghost';
 import type { DeformationDef, GridPoint } from '../types';
+import { rotateMatrix } from '../lib/utils';
 
-// Helper function to rotate a 2D array (the deformation shape)
-const rotateMatrix = (matrix: number[][]): number[][] => {
-  const n = matrix.length;
-  if (n === 0) return [];
-  const m = matrix[0].length;
-  const result = Array(m).fill(0).map(() => Array(n).fill(0));
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < m; j++) {
-      result[j][n - 1 - i] = matrix[i][j];
-    }
-  }
-  return result;
-};
 
 const Scene: React.FC<{
   gridDivisions: number;
@@ -28,7 +16,7 @@ const Scene: React.FC<{
 }> = ({ gridDivisions, selectedDeformation, onDeform }) => {
   const GRID_SIZE = 100;
 
-  // Height data is now sized to the vertex grid, not the cell grid.
+  // Height data is sized to the vertex grid: (divisions + 1) x (divisions + 1)
   const [heightData, setHeightData] = useState<number[][]>(() =>
     Array(gridDivisions + 1).fill(0).map(() => Array(gridDivisions + 1).fill(0))
   );
@@ -48,28 +36,32 @@ const Scene: React.FC<{
   const applyDeformation = useCallback((gridPoint: GridPoint) => {
     if (!selectedDeformation || !ghost) return;
     
-    onDeform(); // Notify app that a modification has been made
+    onDeform(); 
 
     let shape = selectedDeformation.shape;
     for (let i = 0; i < ghost.rotation; i++) {
       shape = rotateMatrix(shape);
     }
     
-    const brushHeight = shape.length;
-    const brushWidth = shape[0]?.length || 0;
+    const brushVertexHeight = shape.length;
+    const brushVertexWidth = shape[0]?.length || 0;
     
-    // Calculate the top-left corner of the brush on the heightmap (vertex grid)
-    const startX = gridPoint[0] - Math.floor(brushWidth / 2);
-    const startZ = gridPoint[1] - Math.floor(brushHeight / 2);
+    // A brush defined by an (N+1)x(N+1) vertex matrix affects an NxN area of cells.
+    const brushCellWidth = brushVertexWidth > 1 ? brushVertexWidth - 1 : 1;
+    const brushCellHeight = brushVertexHeight > 1 ? brushVertexHeight - 1 : 1;
+
+    // Calculate the top-left vertex of the brush application area,
+    // centering the brush's cell footprint on the clicked grid cell.
+    const startX = gridPoint[0] - Math.floor(brushCellWidth / 2);
+    const startZ = gridPoint[1] - Math.floor(brushCellHeight / 2);
 
     setHeightData(prev => {
         const newData = prev.map(row => [...row]);
-        for(let z = 0; z < brushHeight; z++) {
-          for (let x = 0; x < brushWidth; x++) {
+        for(let z = 0; z < brushVertexHeight; z++) {
+          for (let x = 0; x < brushVertexWidth; x++) {
             const mapX = startX + x;
             const mapZ = startZ + z;
 
-            // Check bounds against the vertex grid dimensions
             if (mapZ >= 0 && mapZ <= gridDivisions && mapX >= 0 && mapX <= gridDivisions) {
               newData[mapZ][mapX] += shape[z][x];
             }
@@ -119,7 +111,6 @@ const Scene: React.FC<{
         shadow-camera-bottom={-GRID_SIZE/2}
       />
 
-      {/* Terrain now gets segments matching gridDivisions */}
       <Terrain size={GRID_SIZE} segments={gridDivisions} heightData={heightData} />
       <Grid 
         size={GRID_SIZE} 
@@ -130,10 +121,10 @@ const Scene: React.FC<{
       />
       {ghost && selectedDeformation && (
         <Ghost
-          position={ghost.position}
+          clickedCell={ghost.position}
           rotation={ghost.rotation}
           deformation={selectedDeformation}
-          size={GRID_SIZE}
+          worldSize={GRID_SIZE}
           divisions={gridDivisions}
         />
       )}

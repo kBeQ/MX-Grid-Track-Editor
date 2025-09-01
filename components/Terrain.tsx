@@ -1,46 +1,26 @@
 /// <reference types="@react-three/fiber" />
 import React, { useMemo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { applyHeightmapToGeometry } from '../lib/utils';
 
 interface TerrainProps {
   size?: number;
-  segments: number; // No longer optional, must match grid divisions
+  segments: number;
   heightData: number[][];
 }
 
 const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) => {
   const meshRef = useRef<THREE.Mesh>(null!);
   
-  // The geometry is now directly tied to the number of segments (grid divisions)
   const geometry = useMemo(() => new THREE.PlaneGeometry(size, size, segments, segments), [size, segments]);
 
   useEffect(() => {
-    if (!meshRef.current || !heightData || heightData.length === 0) return;
-
-    const geom = meshRef.current.geometry;
-    const positions = geom.attributes.position;
+    if (!meshRef.current?.geometry || !heightData || heightData.length === 0) return;
     
-    // The vertex count should match the heightData dimensions
-    if (positions.count !== (segments + 1) * (segments + 1)) {
-        return; // Mismatch, wait for re-render
-    }
+    // Use the centralized utility to apply the height data to the geometry
+    applyHeightmapToGeometry(meshRef.current.geometry, heightData);
 
-    for (let i = 0; i < positions.count; i++) {
-      // The vertex indices map directly to our heightData grid.
-      // PlaneGeometry vertices are ordered row by row from top(-z) to bottom(+z)
-      const zIndex = Math.floor(i / (segments + 1));
-      const xIndex = i % (segments + 1);
-
-      if (heightData[zIndex] && heightData[zIndex][xIndex] !== undefined) {
-         // CRITICAL FIX: Set the Z value of the vertex in LOCAL space.
-         // After the mesh's rotation, this corresponds to the Y value (height) in WORLD space.
-        positions.setZ(i, heightData[zIndex][xIndex]);
-      }
-    }
-
-    positions.needsUpdate = true;
-    geom.computeVertexNormals(); // Recalculate normals for correct lighting
-  }, [heightData, segments]);
+  }, [heightData]);
 
   return (
     <mesh ref={meshRef} geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow castShadow>

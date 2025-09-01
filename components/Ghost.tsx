@@ -2,78 +2,55 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import type { DeformationDef, GridPoint } from '../types';
+import { rotateMatrix, applyHeightmapToGeometry } from '../lib/utils';
 
 interface GhostProps {
-  position: GridPoint;
+  clickedCell: GridPoint;
   rotation: number;
   deformation: DeformationDef;
-  size: number;
+  worldSize: number;
   divisions: number;
 }
 
-const rotateMatrix = (matrix: number[][]): number[][] => {
-  const n = matrix.length;
-  if (n === 0) return [];
-  const m = matrix[0].length;
-  const result = Array(m).fill(0).map(() => Array(n).fill(0));
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < m; j++) {
-      result[j][n - 1 - i] = matrix[i][j];
-    }
-  }
-  return result;
-};
-
-
-const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, divisions }) => {
-  const cellSize = size / divisions;
+const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions }) => {
+  const cellSize = worldSize / divisions;
 
   const { geometry, meshPosition } = useMemo(() => {
     let shape = deformation.shape;
-
     for (let i = 0; i < rotation; i++) {
       shape = rotateMatrix(shape);
     }
-    // After rotation, width and height might swap
-    const shapeHeight = shape.length;
-    if (shapeHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
-    const shapeWidth = shape[0].length;
     
-    // CRITICAL FIX: The ghost mesh's dimensions must be calculated from the brush's shape size multiplied by the cell size.
-    const ghostWidth = shapeWidth * cellSize;
-    const ghostHeight = shapeHeight * cellSize;
+    const shapeVertexHeight = shape.length;
+    if (shapeVertexHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
+    const shapeVertexWidth = shape[0].length;
     
-    // The number of segments in the geometry must be one less than the number of vertices in the shape.
-    const widthSegments = shapeWidth > 1 ? shapeWidth - 1 : 1;
-    const heightSegments = shapeHeight > 1 ? shapeHeight - 1 : 1;
-
-    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, widthSegments, heightSegments);
+    // An (N+1)x(N+1) vertex shape corresponds to an NxN grid of cells.
+    const cellWidth = shapeVertexWidth > 1 ? shapeVertexWidth - 1 : 1;
+    const cellHeight = shapeVertexHeight > 1 ? shapeVertexHeight - 1 : 1;
     
-    const positions = ghostGeom.attributes.position;
-    if (positions.count === shapeWidth * shapeHeight) {
-        for (let i = 0; i < positions.count; i++) {
-            const zIndex = Math.floor(i / shapeWidth);
-            const xIndex = i % shapeWidth;
+    // The ghost geometry should cover the exact area of cells to be affected.
+    const ghostWidth = cellWidth * cellSize;
+    const ghostHeight = cellHeight * cellSize;
 
-            if (shape[zIndex] && shape[zIndex][xIndex] !== undefined) {
-                // Set the Z value for height, same as in the Terrain component.
-                positions.setZ(i, shape[zIndex][xIndex]);
-            }
-        }
-    }
-
-
-    positions.needsUpdate = true;
-    ghostGeom.computeVertexNormals();
-
-    const x = (position[0] + 0.5) * cellSize - size / 2;
-    const z = (position[1] + 0.5) * cellSize - size / 2;
+    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, cellWidth, cellHeight);
     
-    const mPos = new THREE.Vector3(x, 0.16, z);
+    // Apply the deformation shape to the new geometry.
+    applyHeightmapToGeometry(ghostGeom, shape);
+
+    // Calculate the position of the ghost mesh.
+    // It should be centered over the affected cells.
+    const startGridX = clickedCell[0] - Math.floor(cellWidth / 2);
+    const startGridZ = clickedCell[1] - Math.floor(cellHeight / 2);
+    
+    const centerWorldX = (startGridX + cellWidth / 2) * cellSize - worldSize / 2;
+    const centerWorldZ = (startGridZ + cellHeight / 2) * cellSize - worldSize / 2;
+    
+    const mPos = new THREE.Vector3(centerWorldX, 0.16, centerWorldZ);
 
     return { geometry: ghostGeom, meshPosition: mPos };
 
-  }, [deformation, rotation, position, cellSize, size]);
+  }, [deformation, rotation, clickedCell, cellSize, worldSize]);
 
   return (
     <mesh position={meshPosition} geometry={geometry} rotation-x={-Math.PI / 2}>
