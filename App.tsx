@@ -121,7 +121,7 @@ const App: React.FC = () => {
         onGridDivisionsChange={setGridDivisions}
       />
 
-      <Canvas shadows>
+      <Canvas shadows camera={{ position: [0, 80, 0.1], fov: 50 }}>
         <Scene gridDivisions={gridDivisions} />
       </Canvas>
     </div>
