@@ -30,7 +30,8 @@ const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) =
         metalness={0.1} 
         side={THREE.DoubleSide} 
         transparent 
-        opacity={0.9} 
+        opacity={0.75} 
+        depthWrite={false}
       />
     </mesh>
   );
