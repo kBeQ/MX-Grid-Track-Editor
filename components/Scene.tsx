@@ -1,5 +1,5 @@
 /// <reference types="@react-three/fiber" />
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import Terrain from './Terrain';
@@ -13,7 +13,6 @@ const useMultiSelection = () => {
   const toggleSelection = useCallback((point: GridPoint, isMultiSelect: boolean) => {
     const key = JSON.stringify(point);
     setSelected(prev => {
-      // FIX: Explicitly type the new Set to Set<string> to avoid type inference to Set<unknown>.
       const newSelected = isMultiSelect ? new Set(prev) : new Set<string>();
       if (newSelected.has(key)) {
         if (isMultiSelect) newSelected.delete(key);
@@ -23,10 +22,14 @@ const useMultiSelection = () => {
       return newSelected;
     });
   }, []);
+  
+  const clearSelection = useCallback(() => {
+    setSelected(new Set<string>());
+  }, []);
 
   const selectedPoints = useMemo(() => Array.from(selected, key => JSON.parse(key) as GridPoint), [selected]);
 
-  return { selectedPoints, toggleSelection };
+  return { selectedPoints, toggleSelection, clearSelection };
 };
 
 // Component to render highlights on selected grid cells
@@ -52,11 +55,14 @@ const SelectionHighlight: React.FC<{ points: GridPoint[]; size: number; division
 };
 
 
-const Scene: React.FC = () => {
+const Scene: React.FC<{gridDivisions: number}> = ({ gridDivisions }) => {
   const GRID_SIZE = 100;
-  const GRID_DIVISIONS = 20;
   
-  const { selectedPoints, toggleSelection } = useMultiSelection();
+  const { selectedPoints, toggleSelection, clearSelection } = useMultiSelection();
+
+  useEffect(() => {
+    clearSelection();
+  }, [gridDivisions, clearSelection]);
 
   const handleCellClick = useCallback((point: GridPoint, shiftKey: boolean) => {
     toggleSelection(point, shiftKey);
@@ -91,8 +97,8 @@ const Scene: React.FC = () => {
       />
 
       <Terrain size={GRID_SIZE} segments={GRID_SIZE} />
-      <Grid size={GRID_SIZE} divisions={GRID_DIVISIONS} onCellClick={handleCellClick} />
-      <SelectionHighlight points={selectedPoints} size={GRID_SIZE} divisions={GRID_DIVISIONS} />
+      <Grid size={GRID_SIZE} divisions={gridDivisions} onCellClick={handleCellClick} />
+      <SelectionHighlight points={selectedPoints} size={GRID_SIZE} divisions={gridDivisions} />
 
       <fog attach="fog" args={['#272730', 100, 300]} />
       <color attach="background" args={['#272730']} />
