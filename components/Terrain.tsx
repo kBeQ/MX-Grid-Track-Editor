@@ -24,7 +24,14 @@ const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) =
 
   return (
     <mesh ref={meshRef} geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow castShadow>
-      <meshStandardMaterial color="#228B22" roughness={0.7} metalness={0.1} side={THREE.DoubleSide} />
+      <meshStandardMaterial 
+        color="#228B22" 
+        roughness={0.7} 
+        metalness={0.1} 
+        side={THREE.DoubleSide} 
+        transparent 
+        opacity={0.9} 
+      />
     </mesh>
   );
 };
