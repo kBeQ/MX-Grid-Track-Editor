@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import Scene from './components/Scene';
 import { DEFORMATIONS } from './components/deformations';
@@ -129,46 +129,86 @@ const SettingsPanel: React.FC<{
   );
 };
 
-// Moved from components/BrushIcons.tsx to reduce file bloat
+// Replaced div-based preview with a high-resolution canvas renderer for smooth, professional brush icons.
 const BrushPreview: React.FC<{ className?: string; shape: Deformation; }> = ({ className, shape }) => {
-  const { cells, gridTemplateColumns } = useMemo(() => {
-    if (!shape || shape.length === 0 || shape[0].length === 0) {
-      return { cells: [], gridTemplateColumns: '' };
-    }
-    
-    const height = shape.length;
-    const width = shape[0].length;
-    
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const PREVIEW_RESOLUTION = 256; // High-resolution preview
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !shape || shape.length === 0 || shape[0].length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const shapeHeight = shape.length;
+    const shapeWidth = shape[0].length;
+
+    // Find min/max for normalization to create a full contrast image
     const allValues = shape.flat();
     const min = Math.min(...allValues);
     const max = Math.max(...allValues);
     const range = max - min;
 
-    const newCells = shape.map((row, rowIndex) =>
-      row.map((value, colIndex) => {
+    const imageData = ctx.createImageData(PREVIEW_RESOLUTION, PREVIEW_RESOLUTION);
+    const data = imageData.data;
+
+    // Bilinear interpolation function for smooth gradients
+    const interpolate = (v11: number, v12: number, v21: number, v22: number, dx: number, dy: number) => {
+      const w1 = (1 - dx) * v11 + dx * v21; // Interpolate along top edge
+      const w2 = (1 - dx) * v12 + dx * v22; // Interpolate along bottom edge
+      return (1 - dy) * w1 + dy * w2;      // Interpolate vertically
+    };
+
+    for (let y = 0; y < PREVIEW_RESOLUTION; y++) {
+      for (let x = 0; x < PREVIEW_RESOLUTION; x++) {
+        
+        // Map canvas pixel coordinate to the fractional coordinate in the shape matrix
+        const u = (x / (PREVIEW_RESOLUTION - 1)) * (shapeWidth - 1);
+        const v = (y / (PREVIEW_RESOLUTION - 1)) * (shapeHeight - 1);
+
+        const x1 = Math.floor(u);
+        const y1 = Math.floor(v);
+        const x2 = Math.min(x1 + 1, shapeWidth - 1);
+        const y2 = Math.min(y1 + 1, shapeHeight - 1);
+
+        const dx = u - x1;
+        const dy = v - y1;
+        
+        // Get the four corner values from the shape matrix
+        const v11 = shape[y1][x1]; // Top-left
+        const v12 = shape[y2][x1]; // Bottom-left
+        const v21 = shape[y1][x2]; // Top-right
+        const v22 = shape[y2][x2]; // Bottom-right
+
+        const value = interpolate(v11, v12, v21, v22, dx, dy);
+        
         const normalized = range === 0 ? 0.5 : (value - min) / range;
         const colorValue = Math.floor(normalized * 255);
-        const color = `rgb(${colorValue}, ${colorValue}, ${colorValue})`;
-        return <div key={`${rowIndex}-${colIndex}`} style={{ backgroundColor: color }} />;
-      })
-    );
 
-    return {
-      cells: newCells.flat(),
-      gridTemplateColumns: `repeat(${width}, 1fr)`
-    };
+        const i = (y * PREVIEW_RESOLUTION + x) * 4;
+        data[i] = colorValue;     // R
+        data[i + 1] = colorValue; // G
+        data[i + 2] = colorValue; // B
+        data[i + 3] = 255;        // A
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
 
   }, [shape]);
 
   return (
-    <div
-      className={`grid ${className}`}
-      style={{ gridTemplateColumns, aspectRatio: '1 / 1' }}
-    >
-      {cells}
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={PREVIEW_RESOLUTION}
+      height={PREVIEW_RESOLUTION}
+      className={className}
+      style={{ aspectRatio: '1 / 1' }}
+    />
   );
 };
+
 
 const DeformationToolbar: React.FC<{
   selectedDeformationId: string | null;
