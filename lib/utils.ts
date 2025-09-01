@@ -48,3 +48,55 @@ export const applyHeightmapToGeometry = (geometry: THREE.BufferGeometry, heightm
   positions.needsUpdate = true;
   geometry.computeVertexNormals();
 };
+
+/**
+ * Upsamples a 2D matrix using bilinear interpolation to create a higher-resolution version.
+ * This is used to create smooth brush shapes for a high-resolution terrain mesh.
+ */
+export const upsampleMatrix = (matrix: Deformation, factor: number): Deformation => {
+  if (factor <= 1 || matrix.length === 0 || matrix[0].length === 0) {
+    return matrix;
+  }
+
+  const oldRows = matrix.length;
+  const oldCols = matrix[0].length;
+
+  // Calculate new dimensions. E.g., a 2x2 matrix (1x1 cell) with factor 4 becomes a 5x5 matrix.
+  const newRows = (oldRows - 1) * factor + 1;
+  const newCols = (oldCols - 1) * factor + 1;
+
+  const result: Deformation = Array(newRows).fill(0).map(() => Array(newCols).fill(0));
+
+  // Reusable interpolation function
+  const interpolate = (v11: number, v12: number, v21: number, v22: number, dx: number, dy: number) => {
+      const w1 = (1 - dx) * v11 + dx * v21; // Interpolate along top edge
+      const w2 = (1 - dx) * v12 + dx * v22; // Interpolate along bottom edge
+      return (1 - dy) * w1 + dy * w2;      // Interpolate vertically
+  };
+
+  for (let r = 0; r < newRows; r++) {
+    for (let c = 0; c < newCols; c++) {
+      const oldR_frac = r / factor;
+      const oldC_frac = c / factor;
+
+      const r1 = Math.floor(oldR_frac);
+      const c1 = Math.floor(oldC_frac);
+      
+      const r2 = Math.min(r1 + 1, oldRows - 1);
+      const c2 = Math.min(c1 + 1, oldCols - 1);
+      
+      const dy = oldR_frac - r1;
+      const dx = oldC_frac - c1;
+
+      // Get the four corner values from the original, low-res matrix
+      const v11 = matrix[r1][c1]; // Top-left
+      const v12 = matrix[r2][c1]; // Bottom-left
+      const v21 = matrix[r1][c2]; // Top-right
+      const v22 = matrix[r2][c2]; // Bottom-right
+
+      result[r][c] = interpolate(v11, v12, v21, v22, dx, dy);
+    }
+  }
+
+  return result;
+};

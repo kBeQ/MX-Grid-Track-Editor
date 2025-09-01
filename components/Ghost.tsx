@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import type { DeformationDef, GridPoint } from '../types';
-import { rotateMatrix, applyHeightmapToGeometry } from '../lib/utils';
+import { rotateMatrix, applyHeightmapToGeometry, upsampleMatrix } from '../lib/utils';
 
 interface GhostProps {
   clickedCell: GridPoint;
@@ -10,9 +10,10 @@ interface GhostProps {
   deformation: DeformationDef;
   worldSize: number;
   divisions: number;
+  resolutionMultiplier: number;
 }
 
-const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions }) => {
+const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions, resolutionMultiplier }) => {
   const cellSize = worldSize / divisions;
 
   const { geometry, meshPosition } = useMemo(() => {
@@ -25,18 +26,22 @@ const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, world
     if (shapeVertexHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
     const shapeVertexWidth = shape[0].length;
     
-    // An (N+1)x(N+1) vertex shape corresponds to an NxN grid of cells.
     const cellWidth = shapeVertexWidth > 1 ? shapeVertexWidth - 1 : 1;
     const cellHeight = shapeVertexHeight > 1 ? shapeVertexHeight - 1 : 1;
     
-    // The ghost geometry should cover the exact area of cells to be affected.
     const ghostWidth = cellWidth * cellSize;
     const ghostHeight = cellHeight * cellSize;
 
-    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, cellWidth, cellHeight);
+    // Create a high-resolution geometry for the ghost preview.
+    const segmentsX = cellWidth * resolutionMultiplier;
+    const segmentsZ = cellHeight * resolutionMultiplier;
+    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, segmentsX, segmentsZ);
     
-    // Apply the deformation shape to the new geometry.
-    applyHeightmapToGeometry(ghostGeom, shape);
+    // Upsample the brush shape to match the new high-resolution geometry.
+    const highResShape = upsampleMatrix(shape, resolutionMultiplier);
+    
+    // Apply the detailed deformation shape to the ghost's geometry.
+    applyHeightmapToGeometry(ghostGeom, highResShape);
 
     // Calculate the position of the ghost mesh.
     // It should be centered over the affected cells.
@@ -50,7 +55,7 @@ const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, world
 
     return { geometry: ghostGeom, meshPosition: mPos };
 
-  }, [deformation, rotation, clickedCell, cellSize, worldSize]);
+  }, [deformation, rotation, clickedCell, cellSize, worldSize, resolutionMultiplier]);
 
   return (
     <mesh position={meshPosition} geometry={geometry} rotation-x={-Math.PI / 2}>
