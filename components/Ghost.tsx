@@ -51,7 +51,8 @@ const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, di
       const xIndex = i % shapeWidth;
 
       if (shape[zIndex] && shape[zIndex][xIndex] !== undefined) {
-        positions.setY(i, shape[zIndex][xIndex]);
+        // CRITICAL FIX: Set the Z value for height, same as in the Terrain component.
+        positions.setZ(i, shape[zIndex][xIndex]);
       }
     }
 

@@ -32,8 +32,9 @@ const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) =
       const xIndex = i % (segments + 1);
 
       if (heightData[zIndex] && heightData[zIndex][xIndex] !== undefined) {
-         // Set the Y value (which becomes height after rotation) from our heightmap
-        positions.setY(i, heightData[zIndex][xIndex]);
+         // CRITICAL FIX: Set the Z value of the vertex in LOCAL space.
+         // After the mesh's rotation, this corresponds to the Y value (height) in WORLD space.
+        positions.setZ(i, heightData[zIndex][xIndex]);
       }
     }
 
