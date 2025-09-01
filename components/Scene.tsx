@@ -21,21 +21,20 @@ const rotateMatrix = (matrix: number[][]): number[][] => {
   return result;
 };
 
-
 const Scene: React.FC<{
   gridDivisions: number;
   selectedDeformation: DeformationDef | null;
-}> = ({ gridDivisions, selectedDeformation }) => {
+  onDeform: () => void;
+}> = ({ gridDivisions, selectedDeformation, onDeform }) => {
   const GRID_SIZE = 100;
-  const TERRAIN_SEGMENTS = 100;
 
+  // Height data is now a direct map of the grid cells
   const [heightData, setHeightData] = useState<number[][]>(() =>
-    Array(TERRAIN_SEGMENTS + 1).fill(0).map(() => Array(TERRAIN_SEGMENTS + 1).fill(0))
+    Array(gridDivisions).fill(0).map(() => Array(gridDivisions).fill(0))
   );
 
   const [ghost, setGhost] = useState<{ position: GridPoint; rotation: number } | null>(null);
 
-  // Handle brush rotation via 'R' key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 'r') {
@@ -46,37 +45,39 @@ const Scene: React.FC<{
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   
-  // Applies the selected deformation to the terrain height map
   const applyDeformation = useCallback((gridPoint: GridPoint) => {
     if (!selectedDeformation || !ghost) return;
     
+    onDeform(); // Notify app that a modification has been made
+
     let shape = selectedDeformation.shape;
     for (let i = 0; i < ghost.rotation; i++) {
       shape = rotateMatrix(shape);
     }
     
-    // Scale from interaction grid coords to terrain vertex coords
-    const scaleFactor = TERRAIN_SEGMENTS / gridDivisions;
-    const terrainX = Math.floor(gridPoint[0] * scaleFactor);
-    const terrainZ = Math.floor(gridPoint[1] * scaleFactor);
+    const brushHeight = shape.length;
+    const brushWidth = shape[0]?.length || 0;
     
-    const shapeHeight = shape.length;
-    const shapeWidth = shape[0].length;
-    
+    // Calculate the top-left corner of the brush on the heightmap
+    const startX = gridPoint[0] - Math.floor(brushWidth / 2);
+    const startZ = gridPoint[1] - Math.floor(brushHeight / 2);
+
     setHeightData(prev => {
-      const newData = prev.map(row => [...row]);
-      for (let i = 0; i < shapeHeight; i++) {
-        for (let j = 0; j < shapeWidth; j++) {
-          const targetZ = terrainZ + i;
-          const targetX = terrainX + j;
-          if (targetZ >= 0 && targetZ <= TERRAIN_SEGMENTS && targetX >= 0 && targetX <= TERRAIN_SEGMENTS) {
-            newData[targetZ][targetX] += shape[i][j];
+        const newData = prev.map(row => [...row]);
+        for(let z = 0; z < brushHeight; z++) {
+          for (let x = 0; x < brushWidth; x++) {
+            const mapX = startX + x;
+            const mapZ = startZ + z;
+
+            // Check bounds
+            if (mapZ >= 0 && mapZ < gridDivisions && mapX >= 0 && mapX < gridDivisions) {
+              newData[mapZ][mapX] += shape[z][x];
+            }
           }
         }
-      }
-      return newData;
+        return newData;
     });
-  }, [selectedDeformation, ghost, gridDivisions]);
+  }, [selectedDeformation, ghost, gridDivisions, onDeform]);
   
   const handlePointerMove = useCallback((point: GridPoint) => {
     setGhost(prev => ({
@@ -118,7 +119,8 @@ const Scene: React.FC<{
         shadow-camera-bottom={-GRID_SIZE/2}
       />
 
-      <Terrain size={GRID_SIZE} segments={TERRAIN_SEGMENTS} heightData={heightData} />
+      {/* Terrain now gets segments matching gridDivisions */}
+      <Terrain size={GRID_SIZE} segments={gridDivisions} heightData={heightData} />
       <Grid 
         size={GRID_SIZE} 
         divisions={gridDivisions} 

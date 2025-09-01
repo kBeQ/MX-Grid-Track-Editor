@@ -11,7 +11,6 @@ interface GhostProps {
   divisions: number;
 }
 
-// Helper function to rotate a 2D array (the deformation shape)
 const rotateMatrix = (matrix: number[][]): number[][] => {
   const n = matrix.length;
   if (n === 0) return [];
@@ -31,32 +30,38 @@ const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, di
 
   const { geometry, meshPosition } = useMemo(() => {
     let shape = deformation.shape;
+    let brushSize = deformation.size;
+
     for (let i = 0; i < rotation; i++) {
       shape = rotateMatrix(shape);
     }
-    
+    // After rotation, width and height might swap
     const shapeHeight = shape.length;
     if (shapeHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
     const shapeWidth = shape[0].length;
+    
+    const ghostWidth = shapeWidth * cellSize / (brushSize[0]);
+    const ghostHeight = shapeHeight * cellSize / (brushSize[1]);
 
-    const ghostGeom = new THREE.PlaneGeometry(shapeWidth * cellSize, shapeHeight * cellSize, shapeWidth, shapeHeight);
+    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, shapeWidth - 1, shapeHeight - 1);
     
     const positions = ghostGeom.attributes.position;
     for (let i = 0; i < positions.count; i++) {
-      const zIndex = Math.floor(i / (shapeWidth + 1));
-      const xIndex = i % (shapeWidth + 1);
+      const zIndex = Math.floor(i / shapeWidth);
+      const xIndex = i % shapeWidth;
 
       if (shape[zIndex] && shape[zIndex][xIndex] !== undefined) {
         positions.setY(i, shape[zIndex][xIndex]);
       }
     }
+
     positions.needsUpdate = true;
     ghostGeom.computeVertexNormals();
 
-    const x = position[0] * cellSize - size / 2 + (shapeWidth * cellSize) / 2;
-    const z = position[1] * cellSize - size / 2 + (shapeHeight * cellSize) / 2;
+    const x = (position[0] + 0.5) * cellSize - size / 2;
+    const z = (position[1] + 0.5) * cellSize - size / 2;
     
-    const mPos = new THREE.Vector3(x, 0.16, z); // Slightly above grid to prevent z-fighting
+    const mPos = new THREE.Vector3(x, 0.16, z);
 
     return { geometry: ghostGeom, meshPosition: mPos };
 

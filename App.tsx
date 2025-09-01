@@ -20,7 +20,32 @@ const Instructions: React.FC = () => (
   </div>
 );
 
-// Settings panel component remains the same
+// New confirmation dialog
+const ConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-30" aria-modal="true" role="dialog">
+      <div className="bg-gray-900 text-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+        <h2 className="text-lg font-bold mb-4">Reset Terrain?</h2>
+        <p className="mb-6 text-gray-300">Changing the grid scale will reset all terrain modifications. Are you sure you want to continue?</p>
+        <div className="flex justify-end space-x-4">
+          <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-colors">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors">
+            Confirm & Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SettingsPanel: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -49,10 +74,10 @@ const SettingsPanel: React.FC<{
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleApply();
+      onClose();
     }
   };
 
-  // Close on escape key
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
        if (event.key === 'Escape') {
@@ -83,6 +108,7 @@ const SettingsPanel: React.FC<{
               id="grid-size-input"
               type="number"
               min="1"
+              max="100"
               value={inputValue}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
@@ -90,45 +116,72 @@ const SettingsPanel: React.FC<{
               aria-label="Grid scale input"
             />
             <button
-              onClick={handleApply}
+              onClick={() => { handleApply(); onClose(); }}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded transition-colors"
             >
               Apply
             </button>
           </div>
+           <p className="text-xs text-gray-400 mt-2">Warning: Changing this will reset the terrain.</p>
         </div>
       </div>
     </div>
   );
 };
 
-// New component for the deformation toolbar
+
 const DeformationToolbar: React.FC<{
   selectedDeformationId: string | null;
   onSelect: (id: string) => void;
 }> = ({ selectedDeformationId, onSelect }) => (
-  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 bg-opacity-70 text-white p-2 rounded-lg shadow-lg z-10 flex space-x-2">
+  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 bg-opacity-70 text-white p-2 rounded-lg shadow-lg z-10 flex items-center space-x-2">
     <h3 className="text-lg font-bold my-auto px-2">Brushes</h3>
-    {DEFORMATIONS.map(def => (
-      <button
-        key={def.id}
-        onClick={() => onSelect(def.id)}
-        className={`py-2 px-4 rounded-lg transition-colors ${selectedDeformationId === def.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-        aria-pressed={selectedDeformationId === def.id}
-      >
-        {def.name}
-      </button>
-    ))}
+    <div className="flex space-x-1 p-1 bg-gray-800 rounded-md">
+      {DEFORMATIONS.map(def => (
+        <button
+          key={def.id}
+          onClick={() => onSelect(def.id)}
+          className={`p-1 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${selectedDeformationId === def.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+          aria-pressed={selectedDeformationId === def.id}
+          title={def.name}
+        >
+          <def.icon className="w-10 h-10 text-white" shape={def.shape} />
+        </button>
+      ))}
+    </div>
   </div>
 );
 
 
 const App: React.FC = () => {
-  const [gridDivisions, setGridDivisions] = useState(20);
+  const [gridDivisions, setGridDivisions] = useState(50);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedDeformationId, setSelectedDeformationId] = useState<string>(DEFORMATIONS[0].id);
+  const [isTerrainModified, setIsTerrainModified] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState<{ isOpen: boolean, newSize: number | null }>({ isOpen: false, newSize: null });
 
   const selectedDeformation = DEFORMATIONS.find(d => d.id === selectedDeformationId) || null;
+
+  const handleGridDivisionsChange = (newSize: number) => {
+    if (isTerrainModified && newSize !== gridDivisions) {
+      setResetConfirmation({ isOpen: true, newSize });
+    } else {
+      setGridDivisions(newSize);
+    }
+  };
+
+  const confirmReset = () => {
+    if (resetConfirmation.newSize) {
+      setGridDivisions(resetConfirmation.newSize);
+      setIsTerrainModified(false); // Terrain is reset
+    }
+    setResetConfirmation({ isOpen: false, newSize: null });
+  };
+
+  const cancelReset = () => {
+    setResetConfirmation({ isOpen: false, newSize: null });
+  };
+
 
   return (
     <div className="w-screen h-screen bg-gray-800">
@@ -146,13 +199,24 @@ const App: React.FC = () => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         gridDivisions={gridDivisions}
-        onGridDivisionsChange={setGridDivisions}
+        onGridDivisionsChange={handleGridDivisionsChange}
+      />
+
+      <ConfirmationDialog 
+        isOpen={resetConfirmation.isOpen}
+        onConfirm={confirmReset}
+        onCancel={cancelReset}
       />
 
       <DeformationToolbar selectedDeformationId={selectedDeformationId} onSelect={setSelectedDeformationId} />
 
       <Canvas shadows camera={{ position: [0, 80, 0.1], fov: 50 }}>
-        <Scene gridDivisions={gridDivisions} selectedDeformation={selectedDeformation} />
+        <Scene 
+          key={gridDivisions} // This is crucial to force a full re-mount of the scene on resize
+          gridDivisions={gridDivisions} 
+          selectedDeformation={selectedDeformation}
+          onDeform={() => setIsTerrainModified(true)}
+        />
       </Canvas>
     </div>
   );
