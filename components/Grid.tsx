@@ -27,14 +27,16 @@ const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick }) => {
   return (
     <>
       <DreiGrid
+        key={divisions} // Force re-creation when divisions change
         position={[0, 0.1, 0]} // Slightly above terrain to avoid z-fighting
         args={[size, size]}
         cellSize={cellSize}
         cellThickness={1}
-        cellColor="#6f6f6f"
-        sectionSize={size / 10}
-        sectionThickness={1.5}
-        sectionColor="#9a9a9a"
+        cellColor="#888888"
+        // Make sections same as cells for a uniform grid
+        sectionSize={cellSize}
+        sectionThickness={1}
+        sectionColor="#888888"
         fadeDistance={150}
         fadeStrength={1}
         infiniteGrid={false}
