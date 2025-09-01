@@ -27,8 +27,8 @@ const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) =
 
     for (let i = 0; i < positions.count; i++) {
       // The vertex indices map directly to our heightData grid.
-      // PlaneGeometry vertices are ordered row by row.
-      const zIndex = segments - Math.floor(i / (segments + 1));
+      // PlaneGeometry vertices are ordered row by row from top(-z) to bottom(+z)
+      const zIndex = Math.floor(i / (segments + 1));
       const xIndex = i % (segments + 1);
 
       if (heightData[zIndex] && heightData[zIndex][xIndex] !== undefined) {
@@ -39,7 +39,7 @@ const Terrain: React.FC<TerrainProps> = ({ size = 100, segments, heightData }) =
 
     positions.needsUpdate = true;
     geom.computeVertexNormals(); // Recalculate normals for correct lighting
-  }, [heightData, segments, geometry]);
+  }, [heightData, segments]);
 
   return (
     <mesh ref={meshRef} geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow castShadow>

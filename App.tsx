@@ -154,7 +154,7 @@ const DeformationToolbar: React.FC<{
 
 
 const App: React.FC = () => {
-  const [gridDivisions, setGridDivisions] = useState(50);
+  const [gridDivisions, setGridDivisions] = useState(20);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedDeformationId, setSelectedDeformationId] = useState<string>(DEFORMATIONS[0].id);
   const [isTerrainModified, setIsTerrainModified] = useState(false);
@@ -210,7 +210,7 @@ const App: React.FC = () => {
 
       <DeformationToolbar selectedDeformationId={selectedDeformationId} onSelect={setSelectedDeformationId} />
 
-      <Canvas shadows camera={{ position: [0, 80, 0.1], fov: 50 }}>
+      <Canvas shadows camera={{ position: [40, 40, 40], fov: 45 }}>
         <Scene 
           key={gridDivisions} // This is crucial to force a full re-mount of the scene on resize
           gridDivisions={gridDivisions} 

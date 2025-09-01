@@ -28,9 +28,9 @@ const Scene: React.FC<{
 }> = ({ gridDivisions, selectedDeformation, onDeform }) => {
   const GRID_SIZE = 100;
 
-  // Height data is now a direct map of the grid cells
+  // Height data is now sized to the vertex grid, not the cell grid.
   const [heightData, setHeightData] = useState<number[][]>(() =>
-    Array(gridDivisions).fill(0).map(() => Array(gridDivisions).fill(0))
+    Array(gridDivisions + 1).fill(0).map(() => Array(gridDivisions + 1).fill(0))
   );
 
   const [ghost, setGhost] = useState<{ position: GridPoint; rotation: number } | null>(null);
@@ -58,7 +58,7 @@ const Scene: React.FC<{
     const brushHeight = shape.length;
     const brushWidth = shape[0]?.length || 0;
     
-    // Calculate the top-left corner of the brush on the heightmap
+    // Calculate the top-left corner of the brush on the heightmap (vertex grid)
     const startX = gridPoint[0] - Math.floor(brushWidth / 2);
     const startZ = gridPoint[1] - Math.floor(brushHeight / 2);
 
@@ -69,8 +69,8 @@ const Scene: React.FC<{
             const mapX = startX + x;
             const mapZ = startZ + z;
 
-            // Check bounds
-            if (mapZ >= 0 && mapZ < gridDivisions && mapX >= 0 && mapX < gridDivisions) {
+            // Check bounds against the vertex grid dimensions
+            if (mapZ >= 0 && mapZ <= gridDivisions && mapX >= 0 && mapX <= gridDivisions) {
               newData[mapZ][mapX] += shape[z][x];
             }
           }
