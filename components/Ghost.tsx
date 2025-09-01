@@ -30,7 +30,6 @@ const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, di
 
   const { geometry, meshPosition } = useMemo(() => {
     let shape = deformation.shape;
-    let brushSize = deformation.size;
 
     for (let i = 0; i < rotation; i++) {
       shape = rotateMatrix(shape);
@@ -40,8 +39,8 @@ const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, di
     if (shapeHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
     const shapeWidth = shape[0].length;
     
-    const ghostWidth = shapeWidth * cellSize / (brushSize[0]);
-    const ghostHeight = shapeHeight * cellSize / (brushSize[1]);
+    const ghostWidth = shapeWidth * cellSize;
+    const ghostHeight = shapeHeight * cellSize;
 
     const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, shapeWidth - 1, shapeHeight - 1);
     

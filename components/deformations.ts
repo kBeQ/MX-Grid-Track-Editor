@@ -1,7 +1,7 @@
 import type { Deformation, DeformationDef } from '../types';
 import { BrushPreview } from './BrushIcons';
 
-const BRUSH_SIZE = 11;
+const BRUSH_SIZE = 3;
 
 const generateSoftShape = (size: number, peak: number, inverted = false): Deformation => {
   const shape = Array(size).fill(0).map(() => Array(size).fill(0));
@@ -12,7 +12,7 @@ const generateSoftShape = (size: number, peak: number, inverted = false): Deform
       const distZ = z - center;
       const dist = Math.sqrt(distX * distX + distZ * distZ);
       let height = 0;
-      if (dist < center) {
+      if (dist <= center) {
         // Cosine falloff for a smooth curve
         height = (Math.cos((dist / center) * Math.PI) + 1) / 2 * peak;
       }
