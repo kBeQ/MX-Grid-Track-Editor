@@ -6,21 +6,40 @@ import type { GridPoint } from '../types';
 interface GridProps {
   size: number;
   divisions: number;
-  onCellClick: (point: GridPoint, shiftKey: boolean) => void;
+  onCellClick: (point: GridPoint) => void;
+  onPointerMove: (point: GridPoint) => void;
+  onPointerOut: () => void;
 }
 
-const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick }) => {
+const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick, onPointerMove, onPointerOut }) => {
   const cellSize = size / divisions;
 
-  const handleClick = (event: any) => {
-    event.stopPropagation();
-    const { point, shiftKey } = event;
-    
+  const getGridPointFromEvent = (event: any): GridPoint | null => {
+    const { point } = event;
     const gridX = Math.floor((point.x + size / 2) / cellSize);
     const gridZ = Math.floor((point.z + size / 2) / cellSize);
 
     if (gridX >= 0 && gridX < divisions && gridZ >= 0 && gridZ < divisions) {
-      onCellClick([gridX, gridZ], shiftKey);
+      return [gridX, gridZ];
+    }
+    return null;
+  };
+  
+  const handleClick = (event: any) => {
+    event.stopPropagation();
+    const gridPoint = getGridPointFromEvent(event);
+    if (gridPoint) {
+      onCellClick(gridPoint);
+    }
+  };
+
+  const handlePointerMove = (event: any) => {
+    event.stopPropagation();
+    const gridPoint = getGridPointFromEvent(event);
+    if (gridPoint) {
+      onPointerMove(gridPoint);
+    } else {
+      onPointerOut();
     }
   };
 
@@ -44,6 +63,8 @@ const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick }) => {
       <mesh
         rotation-x={-Math.PI / 2}
         onClick={handleClick}
+        onPointerMove={handlePointerMove}
+        onPointerOut={onPointerOut}
         visible={false} // This mesh is only for raycasting
       >
         <planeGeometry args={[size, size]} />

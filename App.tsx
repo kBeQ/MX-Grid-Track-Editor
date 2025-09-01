@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import Scene from './components/Scene';
+import { DEFORMATIONS } from './components/deformations';
+import type { DeformationDef } from './types';
 
-// Instructions component defined inside App.tsx to reduce file count
+// Instructions component updated for sculpting controls
 const Instructions: React.FC = () => (
   <div className="absolute top-4 left-4 bg-gray-900 bg-opacity-70 text-white p-4 rounded-lg shadow-lg max-w-sm z-10">
     <h1 className="text-xl font-bold mb-2">3D Terrain Editor</h1>
@@ -10,13 +12,15 @@ const Instructions: React.FC = () => (
       <li><b>Orbit:</b> Left-click + Drag</li>
       <li><b>Pan:</b> Right-click + Drag</li>
       <li><b>Zoom:</b> Scroll wheel</li>
-      <li><b>Select Cell:</b> Click on a grid cell</li>
-      <li><b>Multi-select:</b> Shift + Click on grid cells</li>
+      <li className="font-bold pt-2">Sculpting:</li>
+      <li><b>Apply Brush:</b> Left-click on grid</li>
+      <li><b>Rotate Brush:</b> Press 'R' key</li>
+      <li>Select a brush from the toolbar at the bottom.</li>
     </ul>
   </div>
 );
 
-// New component for the settings panel
+// Settings panel component remains the same
 const SettingsPanel: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -98,9 +102,33 @@ const SettingsPanel: React.FC<{
   );
 };
 
+// New component for the deformation toolbar
+const DeformationToolbar: React.FC<{
+  selectedDeformationId: string | null;
+  onSelect: (id: string) => void;
+}> = ({ selectedDeformationId, onSelect }) => (
+  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 bg-opacity-70 text-white p-2 rounded-lg shadow-lg z-10 flex space-x-2">
+    <h3 className="text-lg font-bold my-auto px-2">Brushes</h3>
+    {DEFORMATIONS.map(def => (
+      <button
+        key={def.id}
+        onClick={() => onSelect(def.id)}
+        className={`py-2 px-4 rounded-lg transition-colors ${selectedDeformationId === def.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+        aria-pressed={selectedDeformationId === def.id}
+      >
+        {def.name}
+      </button>
+    ))}
+  </div>
+);
+
+
 const App: React.FC = () => {
   const [gridDivisions, setGridDivisions] = useState(20);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedDeformationId, setSelectedDeformationId] = useState<string>(DEFORMATIONS[0].id);
+
+  const selectedDeformation = DEFORMATIONS.find(d => d.id === selectedDeformationId) || null;
 
   return (
     <div className="w-screen h-screen bg-gray-800">
@@ -121,8 +149,10 @@ const App: React.FC = () => {
         onGridDivisionsChange={setGridDivisions}
       />
 
+      <DeformationToolbar selectedDeformationId={selectedDeformationId} onSelect={setSelectedDeformationId} />
+
       <Canvas shadows camera={{ position: [0, 80, 0.1], fov: 50 }}>
-        <Scene gridDivisions={gridDivisions} />
+        <Scene gridDivisions={gridDivisions} selectedDeformation={selectedDeformation} />
       </Canvas>
     </div>
   );
