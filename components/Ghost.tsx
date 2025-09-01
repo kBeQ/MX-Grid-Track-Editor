@@ -39,21 +39,29 @@ const Ghost: React.FC<GhostProps> = ({ position, rotation, deformation, size, di
     if (shapeHeight === 0) return { geometry: new THREE.BufferGeometry(), meshPosition: new THREE.Vector3() };
     const shapeWidth = shape[0].length;
     
+    // CRITICAL FIX: The ghost mesh's dimensions must be calculated from the brush's shape size multiplied by the cell size.
     const ghostWidth = shapeWidth * cellSize;
     const ghostHeight = shapeHeight * cellSize;
+    
+    // The number of segments in the geometry must be one less than the number of vertices in the shape.
+    const widthSegments = shapeWidth > 1 ? shapeWidth - 1 : 1;
+    const heightSegments = shapeHeight > 1 ? shapeHeight - 1 : 1;
 
-    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, shapeWidth - 1, shapeHeight - 1);
+    const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, widthSegments, heightSegments);
     
     const positions = ghostGeom.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const zIndex = Math.floor(i / shapeWidth);
-      const xIndex = i % shapeWidth;
+    if (positions.count === shapeWidth * shapeHeight) {
+        for (let i = 0; i < positions.count; i++) {
+            const zIndex = Math.floor(i / shapeWidth);
+            const xIndex = i % shapeWidth;
 
-      if (shape[zIndex] && shape[zIndex][xIndex] !== undefined) {
-        // CRITICAL FIX: Set the Z value for height, same as in the Terrain component.
-        positions.setZ(i, shape[zIndex][xIndex]);
-      }
+            if (shape[zIndex] && shape[zIndex][xIndex] !== undefined) {
+                // Set the Z value for height, same as in the Terrain component.
+                positions.setZ(i, shape[zIndex][xIndex]);
+            }
+        }
     }
+
 
     positions.needsUpdate = true;
     ghostGeom.computeVertexNormals();
