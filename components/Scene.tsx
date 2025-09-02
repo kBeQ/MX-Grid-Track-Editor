@@ -6,7 +6,7 @@ import Terrain from './Terrain';
 import Grid from './Grid';
 import Ghost from './Ghost';
 import type { BrushDef, GridPoint, SculptMode } from '../types';
-import { rotateMatrix, upsampleMatrix } from '../lib/utils';
+import { rotateMatrix } from '../lib/utils';
 
 // This multiplier increases the terrain's vertex density for smoother sculpting.
 const TERRAIN_RESOLUTION_MULTIPLIER = 4;
@@ -47,20 +47,20 @@ const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStreng
     const mode: SculptMode = event.ctrlKey ? 'lower' : 'raise';
     const strength = mode === 'lower' ? -brushStrength : brushStrength;
 
-    // A brush of size N covers N cells, which corresponds to N+1 vertices.
-    let shape = selectedBrush.shape(brushSize + 1);
+    // Generate the brush shape at the final resolution required to match the terrain mesh.
+    // A brush of size N covers N * multiplier segments, which is (N * multiplier) + 1 vertices.
+    const shapeVertexSize = (brushSize * TERRAIN_RESOLUTION_MULTIPLIER) + 1;
+    let highResShape = selectedBrush.shape(shapeVertexSize);
+
     for (let i = 0; i < ghost.rotation; i++) {
-      shape = rotateMatrix(shape);
+      highResShape = rotateMatrix(highResShape);
     }
-    
-    const highResShape = upsampleMatrix(shape, TERRAIN_RESOLUTION_MULTIPLIER);
     
     const brushVertexHeight = highResShape.length;
     const brushVertexWidth = highResShape[0]?.length || 0;
     
-    // The number of cells is the number of vertices - 1.
-    const brushCellWidth = (shape[0]?.length || 1) - 1;
-    const brushCellHeight = (shape.length || 1) - 1;
+    const brushCellWidth = brushSize;
+    const brushCellHeight = brushSize;
 
     const startCellX = gridPoint[0] - Math.floor(brushCellWidth / 2);
     const startCellZ = gridPoint[1] - Math.floor(brushCellHeight / 2);
