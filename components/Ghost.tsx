@@ -13,13 +13,15 @@ interface GhostProps {
   resolutionMultiplier: number;
   sculptMode: SculptMode;
   brushStrength: number;
+  brushSize: number;
 }
 
-const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions, resolutionMultiplier, sculptMode, brushStrength }) => {
+const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions, resolutionMultiplier, sculptMode, brushStrength, brushSize }) => {
   const cellSize = worldSize / divisions;
 
   const { geometry, meshPosition } = useMemo(() => {
-    let shape = deformation.shape;
+    // A brush of size N covers N cells, which corresponds to N+1 vertices.
+    let shape = deformation.shape(brushSize + 1);
     for (let i = 0; i < rotation; i++) {
       shape = rotateMatrix(shape);
     }
@@ -56,7 +58,7 @@ const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, world
 
     return { geometry: ghostGeom, meshPosition: mPos };
 
-  }, [deformation, rotation, clickedCell, cellSize, worldSize, resolutionMultiplier, sculptMode, brushStrength]);
+  }, [deformation, rotation, clickedCell, cellSize, worldSize, resolutionMultiplier, sculptMode, brushStrength, brushSize]);
   
   const materialColor = sculptMode === 'raise' ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
 

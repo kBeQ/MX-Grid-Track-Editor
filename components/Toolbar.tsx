@@ -116,7 +116,7 @@ const HelpPanel: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
               <li><b>Zoom:</b> Scroll wheel</li>
               <li className="font-bold pt-2">Sculpting:</li>
               <li><b>Raise Terrain:</b> Left-click on grid</li>
-              <li><b>Lower Terrain:</b> Shift + Left-click on grid</li>
+              <li><b>Lower Terrain:</b> Ctrl + Left-click on grid</li>
               <li><b>Rotate Brush:</b> Press 'R' key</li>
             </ul>
         </div>
@@ -158,7 +158,7 @@ const Toolbar: React.FC<{ state: any; dispatch: any }> = ({ state, dispatch }) =
                 className={`p-1 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${state.selectedBrushId === def.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
                 title={def.name}
               >
-                <BrushPreview className="w-12 h-12 text-white" shape={def.shape} />
+                <BrushPreview className="w-12 h-12 text-white" shape={def.shape(4)} />
               </button>
             ))}
           </div>
@@ -177,10 +177,27 @@ const Toolbar: React.FC<{ state: any; dispatch: any }> = ({ state, dispatch }) =
                         step="0.05"
                         value={state.brushStrength}
                         onChange={(e) => dispatch({ type: 'SET_BRUSH_STRENGTH', payload: parseFloat(e.target.value) })}
-                        className="w-24 md:w-32"
+                        className="w-20 md:w-24"
                         title={`Brush Strength: ${Math.round(state.brushStrength * 100)}%`}
                     />
                     <span className="text-sm font-mono w-10 text-center">{Math.round(state.brushStrength * 100)}%</span>
+                </div>
+            </div>
+             <div className="flex flex-col items-center">
+                <label htmlFor="size-slider" className="text-xs font-bold mb-1">Size</label>
+                <div className="flex items-center space-x-2">
+                    <input
+                        id="size-slider"
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={state.brushSize}
+                        onChange={(e) => dispatch({ type: 'SET_BRUSH_SIZE', payload: parseInt(e.target.value, 10) })}
+                        className="w-20 md:w-24"
+                        title={`Brush Size: ${state.brushSize}x`}
+                    />
+                    <span className="text-sm font-mono w-10 text-center">{state.brushSize}x</span>
                 </div>
             </div>
         </div>

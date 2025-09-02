@@ -15,10 +15,11 @@ interface SceneProps {
   gridDivisions: number;
   selectedBrush: BrushDef | null;
   brushStrength: number;
+  brushSize: number;
   onDeform: () => void;
 }
 
-const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStrength, onDeform }) => {
+const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStrength, brushSize, onDeform }) => {
   const GRID_SIZE = 100;
   const renderSegments = gridDivisions * TERRAIN_RESOLUTION_MULTIPLIER;
 
@@ -43,10 +44,11 @@ const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStreng
     
     onDeform(); 
 
-    const mode: SculptMode = event.shiftKey ? 'lower' : 'raise';
+    const mode: SculptMode = event.ctrlKey ? 'lower' : 'raise';
     const strength = mode === 'lower' ? -brushStrength : brushStrength;
 
-    let shape = selectedBrush.shape;
+    // A brush of size N covers N cells, which corresponds to N+1 vertices.
+    let shape = selectedBrush.shape(brushSize + 1);
     for (let i = 0; i < ghost.rotation; i++) {
       shape = rotateMatrix(shape);
     }
@@ -56,8 +58,9 @@ const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStreng
     const brushVertexHeight = highResShape.length;
     const brushVertexWidth = highResShape[0]?.length || 0;
     
-    const brushCellWidth = (selectedBrush.shape[0]?.length || 1) - 1;
-    const brushCellHeight = (selectedBrush.shape.length || 1) - 1;
+    // The number of cells is the number of vertices - 1.
+    const brushCellWidth = (shape[0]?.length || 1) - 1;
+    const brushCellHeight = (shape.length || 1) - 1;
 
     const startCellX = gridPoint[0] - Math.floor(brushCellWidth / 2);
     const startCellZ = gridPoint[1] - Math.floor(brushCellHeight / 2);
@@ -79,10 +82,10 @@ const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStreng
         }
         return newData;
     });
-  }, [selectedBrush, ghost, onDeform, renderSegments, brushStrength]);
+  }, [selectedBrush, ghost, onDeform, renderSegments, brushStrength, brushSize]);
   
   const handlePointerMove = useCallback((point: GridPoint, event: any) => {
-    const mode: SculptMode = event.shiftKey ? 'lower' : 'raise';
+    const mode: SculptMode = event.ctrlKey ? 'lower' : 'raise';
     setGhost(prev => ({
       position: point,
       rotation: prev?.rotation ?? 0,
@@ -141,6 +144,7 @@ const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStreng
           resolutionMultiplier={TERRAIN_RESOLUTION_MULTIPLIER}
           sculptMode={ghost.mode}
           brushStrength={brushStrength}
+          brushSize={brushSize}
         />
       )}
 

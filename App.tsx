@@ -11,6 +11,7 @@ interface SculptState {
   gridDivisions: number;
   selectedBrushId: string;
   brushStrength: number; // 0.0 to 1.0
+  brushSize: number; // 1 to 10
   isTerrainModified: boolean;
   isSettingsOpen: boolean;
   isHelpOpen: boolean;
@@ -20,6 +21,7 @@ interface SculptState {
 type SculptAction =
   | { type: 'SELECT_BRUSH'; payload: string }
   | { type: 'SET_BRUSH_STRENGTH'; payload: number }
+  | { type: 'SET_BRUSH_SIZE'; payload: number }
   | { type: 'SET_MODIFIED'; payload: boolean }
   | { type: 'TOGGLE_SETTINGS'; payload?: boolean }
   | { type: 'TOGGLE_HELP'; payload?: boolean }
@@ -32,6 +34,7 @@ const initialState: SculptState = {
   gridDivisions: 20,
   selectedBrushId: BRUSHES[0].id,
   brushStrength: 0.5,
+  brushSize: 1,
   isTerrainModified: false,
   isSettingsOpen: false,
   isHelpOpen: false,
@@ -44,6 +47,8 @@ function reducer(state: SculptState, action: SculptAction): SculptState {
       return { ...state, selectedBrushId: action.payload };
     case 'SET_BRUSH_STRENGTH':
       return { ...state, brushStrength: action.payload };
+    case 'SET_BRUSH_SIZE':
+        return { ...state, brushSize: action.payload };
     case 'SET_MODIFIED':
       return { ...state, isTerrainModified: action.payload };
     case 'TOGGLE_SETTINGS':
@@ -103,6 +108,7 @@ const App: React.FC = () => {
           gridDivisions={state.gridDivisions} 
           selectedBrush={selectedBrush}
           brushStrength={state.brushStrength}
+          brushSize={state.brushSize}
           onDeform={() => dispatch({ type: 'SET_MODIFIED', payload: true })}
         />
       </Canvas>

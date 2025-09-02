@@ -1,15 +1,12 @@
 import type { Deformation, BrushDef } from '../types';
 
-// A brush that affects a 1x1 cell area needs a 2x2 vertex matrix.
-const BRUSH_CELLS_1x1 = 2; 
-// A brush that affects a 3x3 cell area needs a 4x4 vertex matrix.
-const BRUSH_CELLS_3x3 = 4;
-
 const generateFlatShape = (size: number, peak: number): Deformation => {
+  if (size < 2) size = 2;
   return Array(size).fill(0).map(() => Array(size).fill(peak));
 };
 
 const generateSoftShape = (size: number, peak: number): Deformation => {
+  if (size < 2) size = 2;
   const shape = Array(size).fill(0).map(() => Array(size).fill(0));
   const center = (size - 1) / 2;
   for (let z = 0; z < size; z++) {
@@ -30,6 +27,7 @@ const generateSoftShape = (size: number, peak: number): Deformation => {
 };
 
 const generateLinearRamp = (size: number, peak: number): Deformation => {
+  if (size < 2) size = 2;
   const shape = Array(size).fill(0).map(() => Array(size).fill(0));
    for (let z = 0; z < size; z++) {
     const height = (z / (size - 1)) * peak;
@@ -41,6 +39,7 @@ const generateLinearRamp = (size: number, peak: number): Deformation => {
 };
 
 const generateRidge = (size: number, peak: number): Deformation => {
+    if (size < 2) size = 2;
     const shape = Array(size).fill(0).map(() => Array(size).fill(0));
     const center = (size - 1) / 2;
     for (let x = 0; x < size; x++) {
@@ -57,20 +56,10 @@ const generateRidge = (size: number, peak: number): Deformation => {
     return shape;
 }
 
-// 1x1 Cell Brushes (using 2x2 vertex matrices)
-const raiseCell = generateFlatShape(BRUSH_CELLS_1x1, 1.0); // Base height is 1, strength will modify
-
-// 3x3 Cell Brushes (using 4x4 vertex matrices)
-const softHill = generateSoftShape(BRUSH_CELLS_3x3, 2.0);
-const linearRamp = generateLinearRamp(BRUSH_CELLS_3x3, 1.5);
-const ridge = generateRidge(BRUSH_CELLS_3x3, 1.0);
-const softValley = generateSoftShape(BRUSH_CELLS_3x3, -2.0);
-
-
 export const BRUSHES: BrushDef[] = [
-  { id: 'raise', name: 'Raise Cell', shape: raiseCell },
-  { id: 'softHill', name: 'Soft Hill', shape: softHill },
-  { id: 'ridge', name: 'Ridge', shape: ridge },
-  { id: 'linearRamp', name: 'Linear Ramp', shape: linearRamp },
-  { id: 'softValley', name: 'Soft Valley', shape: softValley },
+  { id: 'raise', name: 'Raise Cell', shape: (size) => generateFlatShape(size, 1.0) },
+  { id: 'softHill', name: 'Soft Hill', shape: (size) => generateSoftShape(size, 2.0) },
+  { id: 'ridge', name: 'Ridge', shape: (size) => generateRidge(size, 1.0) },
+  { id: 'linearRamp', name: 'Linear Ramp', shape: (size) => generateLinearRamp(size, 1.5) },
+  { id: 'softValley', name: 'Soft Valley', shape: (size) => generateSoftShape(size, -2.0) },
 ];
