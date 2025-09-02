@@ -1,19 +1,21 @@
 /// <reference types="@react-three/fiber" />
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import type { DeformationDef, GridPoint } from '../types';
+import type { BrushDef, GridPoint, SculptMode } from '../types';
 import { rotateMatrix, applyHeightmapToGeometry, upsampleMatrix } from '../lib/utils';
 
 interface GhostProps {
   clickedCell: GridPoint;
   rotation: number;
-  deformation: DeformationDef;
+  deformation: BrushDef;
   worldSize: number;
   divisions: number;
   resolutionMultiplier: number;
+  sculptMode: SculptMode;
+  brushStrength: number;
 }
 
-const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions, resolutionMultiplier }) => {
+const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, worldSize, divisions, resolutionMultiplier, sculptMode, brushStrength }) => {
   const cellSize = worldSize / divisions;
 
   const { geometry, meshPosition } = useMemo(() => {
@@ -32,19 +34,18 @@ const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, world
     const ghostWidth = cellWidth * cellSize;
     const ghostHeight = cellHeight * cellSize;
 
-    // Create a high-resolution geometry for the ghost preview.
     const segmentsX = cellWidth * resolutionMultiplier;
     const segmentsZ = cellHeight * resolutionMultiplier;
     const ghostGeom = new THREE.PlaneGeometry(ghostWidth, ghostHeight, segmentsX, segmentsZ);
     
-    // Upsample the brush shape to match the new high-resolution geometry.
     const highResShape = upsampleMatrix(shape, resolutionMultiplier);
-    
-    // Apply the detailed deformation shape to the ghost's geometry.
-    applyHeightmapToGeometry(ghostGeom, highResShape);
 
-    // Calculate the position of the ghost mesh.
-    // It should be centered over the affected cells.
+    // Apply strength and mode to the ghost preview shape
+    const strength = sculptMode === 'lower' ? -brushStrength : brushStrength;
+    const finalShape = highResShape.map(row => row.map(h => h * strength * 2));
+    
+    applyHeightmapToGeometry(ghostGeom, finalShape);
+
     const startGridX = clickedCell[0] - Math.floor(cellWidth / 2);
     const startGridZ = clickedCell[1] - Math.floor(cellHeight / 2);
     
@@ -55,11 +56,20 @@ const Ghost: React.FC<GhostProps> = ({ clickedCell, rotation, deformation, world
 
     return { geometry: ghostGeom, meshPosition: mPos };
 
-  }, [deformation, rotation, clickedCell, cellSize, worldSize, resolutionMultiplier]);
+  }, [deformation, rotation, clickedCell, cellSize, worldSize, resolutionMultiplier, sculptMode, brushStrength]);
+  
+  const materialColor = sculptMode === 'raise' ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
 
   return (
     <mesh position={meshPosition} geometry={geometry} rotation-x={-Math.PI / 2}>
-      <meshStandardMaterial color="lime" emissive="lime" emissiveIntensity={0.2} transparent opacity={0.5} wireframe />
+      <meshStandardMaterial 
+        color={materialColor} 
+        emissive={materialColor} 
+        emissiveIntensity={0.3} 
+        transparent 
+        opacity={0.5} 
+        wireframe 
+      />
     </mesh>
   );
 };

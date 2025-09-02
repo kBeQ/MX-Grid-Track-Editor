@@ -6,8 +6,8 @@ import type { GridPoint } from '../types';
 interface GridProps {
   size: number;
   divisions: number;
-  onCellClick: (point: GridPoint) => void;
-  onPointerMove: (point: GridPoint) => void;
+  onCellClick: (point: GridPoint, event: any) => void;
+  onPointerMove: (point: GridPoint, event: any) => void;
   onPointerOut: () => void;
 }
 
@@ -29,7 +29,7 @@ const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick, onPointerMove
     event.stopPropagation();
     const gridPoint = getGridPointFromEvent(event);
     if (gridPoint) {
-      onCellClick(gridPoint);
+      onCellClick(gridPoint, event);
     }
   };
 
@@ -37,7 +37,7 @@ const Grid: React.FC<GridProps> = ({ size, divisions, onCellClick, onPointerMove
     event.stopPropagation();
     const gridPoint = getGridPointFromEvent(event);
     if (gridPoint) {
-      onPointerMove(gridPoint);
+      onPointerMove(gridPoint, event);
     } else {
       onPointerOut();
     }

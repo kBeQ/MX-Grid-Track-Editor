@@ -5,28 +5,28 @@ import * as THREE from 'three';
 import Terrain from './Terrain';
 import Grid from './Grid';
 import Ghost from './Ghost';
-import type { DeformationDef, GridPoint } from '../types';
+import type { BrushDef, GridPoint, SculptMode } from '../types';
 import { rotateMatrix, upsampleMatrix } from '../lib/utils';
 
 // This multiplier increases the terrain's vertex density for smoother sculpting.
-// A value of 4 means a 20x20 grid becomes a high-resolution 80x80 mesh.
 const TERRAIN_RESOLUTION_MULTIPLIER = 4;
 
-const Scene: React.FC<{
+interface SceneProps {
   gridDivisions: number;
-  selectedDeformation: DeformationDef | null;
+  selectedBrush: BrushDef | null;
+  brushStrength: number;
   onDeform: () => void;
-}> = ({ gridDivisions, selectedDeformation, onDeform }) => {
+}
+
+const Scene: React.FC<SceneProps> = ({ gridDivisions, selectedBrush, brushStrength, onDeform }) => {
   const GRID_SIZE = 100;
-  // The render mesh has a higher resolution than the interaction grid.
   const renderSegments = gridDivisions * TERRAIN_RESOLUTION_MULTIPLIER;
 
-  // Height data is sized to the high-resolution vertex grid.
   const [heightData, setHeightData] = useState<number[][]>(() =>
     Array(renderSegments + 1).fill(0).map(() => Array(renderSegments + 1).fill(0))
   );
 
-  const [ghost, setGhost] = useState<{ position: GridPoint; rotation: number } | null>(null);
+  const [ghost, setGhost] = useState<{ position: GridPoint; rotation: number, mode: SculptMode } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,31 +38,30 @@ const Scene: React.FC<{
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   
-  const applyDeformation = useCallback((gridPoint: GridPoint) => {
-    if (!selectedDeformation || !ghost) return;
+  const applyDeformation = useCallback((gridPoint: GridPoint, event: any) => {
+    if (!selectedBrush || !ghost) return;
     
     onDeform(); 
 
-    let shape = selectedDeformation.shape;
+    const mode: SculptMode = event.shiftKey ? 'lower' : 'raise';
+    const strength = mode === 'lower' ? -brushStrength : brushStrength;
+
+    let shape = selectedBrush.shape;
     for (let i = 0; i < ghost.rotation; i++) {
       shape = rotateMatrix(shape);
     }
     
-    // Upsample the brush shape for a high-resolution application.
     const highResShape = upsampleMatrix(shape, TERRAIN_RESOLUTION_MULTIPLIER);
     
     const brushVertexHeight = highResShape.length;
     const brushVertexWidth = highResShape[0]?.length || 0;
     
-    // Get the original low-res cell dimensions of the brush.
-    const brushCellWidth = (selectedDeformation.shape[0]?.length || 1) - 1;
-    const brushCellHeight = (selectedDeformation.shape.length || 1) - 1;
+    const brushCellWidth = (selectedBrush.shape[0]?.length || 1) - 1;
+    const brushCellHeight = (selectedBrush.shape.length || 1) - 1;
 
-    // Calculate the top-left vertex of the brush on the INTERACTION grid.
     const startCellX = gridPoint[0] - Math.floor(brushCellWidth / 2);
     const startCellZ = gridPoint[1] - Math.floor(brushCellHeight / 2);
 
-    // Convert to the top-left vertex on the high-resolution RENDER grid.
     const startVertexX = startCellX * TERRAIN_RESOLUTION_MULTIPLIER;
     const startVertexZ = startCellZ * TERRAIN_RESOLUTION_MULTIPLIER;
 
@@ -74,18 +73,20 @@ const Scene: React.FC<{
             const mapZ = startVertexZ + z;
 
             if (mapZ >= 0 && mapZ <= renderSegments && mapX >= 0 && mapX <= renderSegments) {
-              newData[mapZ][mapX] += highResShape[z][x];
+              newData[mapZ][mapX] += highResShape[z][x] * strength * 2; // Strength multiplier
             }
           }
         }
         return newData;
     });
-  }, [selectedDeformation, ghost, onDeform, renderSegments]);
+  }, [selectedBrush, ghost, onDeform, renderSegments, brushStrength]);
   
-  const handlePointerMove = useCallback((point: GridPoint) => {
+  const handlePointerMove = useCallback((point: GridPoint, event: any) => {
+    const mode: SculptMode = event.shiftKey ? 'lower' : 'raise';
     setGhost(prev => ({
       position: point,
       rotation: prev?.rotation ?? 0,
+      mode: mode,
     }));
   }, []);
 
@@ -130,14 +131,16 @@ const Scene: React.FC<{
         onPointerMove={handlePointerMove}
         onPointerOut={handlePointerOut}
       />
-      {ghost && selectedDeformation && (
+      {ghost && selectedBrush && (
         <Ghost
           clickedCell={ghost.position}
           rotation={ghost.rotation}
-          deformation={selectedDeformation}
+          deformation={selectedBrush}
           worldSize={GRID_SIZE}
           divisions={gridDivisions}
           resolutionMultiplier={TERRAIN_RESOLUTION_MULTIPLIER}
+          sculptMode={ghost.mode}
+          brushStrength={brushStrength}
         />
       )}
 
